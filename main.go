@@ -10,9 +10,11 @@ type MessageType byte
 
 const (
 	MessageTypeHandshake MessageType = iota // 0
-	MessageTypeMove                         // 1
-	MessageTypeShoot                        // 2
-	MessageTypeChat                         // 3
+	MessageTypePing                         // 1
+	MessageTypePong                         // 2
+	MessageTypeMove                         // 3
+	MessageTypeShoot                        // 4
+	MessageTypeChat                         // 5
 )
 
 func createPacket(messageType MessageType, payload string) []byte {
