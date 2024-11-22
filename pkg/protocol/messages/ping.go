@@ -1,4 +1,4 @@
-package protocol
+package messages
 
 type PingPayload struct {
 	Message string
