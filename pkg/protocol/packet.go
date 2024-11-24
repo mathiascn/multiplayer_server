@@ -1,43 +1,133 @@
+// Packet structure:
+// [Message Type: 1 byte]
+// [Payload Size: 4 bytes]
+// [Serial: 1 byte]
+// [Error Flag: 1 byte]
+// [Timestamp: 8 bytes]
+// [Payload: variable length]
 package protocol
-
 
 import (
 	"fmt"
+	"bytes"
+	"encoding/binary"
+	"time"
 )
 
+const (
+	messageTypeSize = 1
+	payloadSizeSize = 4
+	serialSize = 1
+	errorFlagSize = 1
+	timestampSize = 8
+	headerSize = messageTypeSize + payloadSizeSize + serialSize + errorFlagSize + timestampSize
+)
 
-func EncodePacket(messageType MessageType, payload string) []byte {
-	// First byte is the message type
-	header := []byte{byte(messageType)}
+var (
+	order = binary.BigEndian
+)
 
-	// Next 4 bytes are the payload length in Big-Endian
-	// https://en.wikipedia.org/wiki/Endianness
-	length := uint32(len(payload))
-	header = append(header, byte(length>>24), byte(length>>16), byte(length>>8), byte(length))
+type Packet struct {
+	MessageType MessageType
+	ErrorFlag byte
+	Serial uint8
+	Timestamp int64
+	Payload []byte
+}
 
-	// Combine header and payload into a byte slice
-	packet := append(header, []byte(payload)...)
-	return packet
+func EncodePacket(packet Packet) ([]byte, error) {
+	buffer := new(bytes.Buffer)
+
+	// write message type (1 byte)
+	buffer.Write([]byte{byte(packet.MessageType)})
+
+
+	// write payload size (4 bytes)
+	payloadSize := uint32(len(packet.Payload))
+	if err := binary.Write(buffer, order, payloadSize); err != nil {
+		return nil, err
+	}
+
+	// write error flag (1 byte)
+	buffer.Write([]byte{packet.ErrorFlag})
+
+	// write serial (1 byte)
+	buffer.Write([]byte{packet.Serial})
+
+	// write unix timestamp (8 bytes)
+	if packet.Timestamp == 0 {
+		packet.Timestamp = time.Now().UnixMilli()
+	}
+	if err := binary.Write(buffer, order, packet.Timestamp); err != nil {
+		return nil, err
+	}
+
+	// write payload (variable bytes)
+	buffer.Write([]byte(packet.Payload))
+
+	return buffer.Bytes(), nil
 }
 
 
-func DecodePacket(packet []byte) (MessageType, string, error) {
-	fmt.Println("reading packet of size:", len(packet))
-	// If packet is less than 5 it does not contain a complete header
-	if len(packet) < 5 {
-		return 0, "", fmt.Errorf("packet too short")
+func DecodePacket(data []byte) (Packet, error) {
+	dataLength := len(data)
+	fmt.Println("decoding a packet of size:", dataLength)
+
+	// return error if length is less than header size
+	if dataLength < headerSize {
+		return Packet{}, fmt.Errorf("packet too short")
 	}
 
-	messageType := MessageType(packet[0])
-	length := uint32(packet[1])<<24 | uint32(packet[2])<<16 | uint32(packet[3])<<8 | uint32(packet[4])
+	buffer := bytes.NewReader(data)
 
-	// Making sure the payload length matches the remaining packet size
-	if int(length) != len(packet)-5 {
-		return 0, "", fmt.Errorf("invalid payload length: expected %d, got %d", length, len(packet)-5)
+	// read message type (1 byte)
+	messageType, err := buffer.ReadByte()
+	if err != nil {
+		return Packet{}, err
 	}
 
-	// Extract the payload
-	payload := string(packet[5:]) // Convert the payload to a string
+	// read payload size (4 bytes)
+	var payloadSize uint32
+	if err := binary.Read(buffer, order, &payloadSize); err != nil {
+		return Packet{}, err
+	}
 
-	return messageType, payload, nil
+	// ensuring packet length is of expected size
+	expectedLength := headerSize + int(payloadSize)
+	if dataLength < expectedLength {
+		return Packet{}, fmt.Errorf("invalid payload length: expected %d, got %d", expectedLength, dataLength)
+	}
+
+
+	// read error flag (1 byte)
+	errorFlag, err := buffer.ReadByte()
+	if err != nil {
+		return Packet{}, err
+	}
+
+	// read serial (1 byte)
+	serial, err := buffer.ReadByte()
+	if err != nil {
+		return Packet{}, err
+	}
+
+	// read timestamp (8 bytes)
+	var timestamp int64
+	if err := binary.Read(buffer, order, &timestamp); err != nil {
+		return Packet{}, err
+	}
+
+	// read payload
+	payload := make([]byte, payloadSize)
+	if _, err := buffer.Read(payload); err != nil {
+		return Packet{}, err
+	}
+
+	return Packet{
+		MessageType: MessageType(messageType),
+		ErrorFlag:   errorFlag,
+		Serial:      serial,
+		Timestamp:   timestamp,
+		Payload:     payload,
+	}, nil
 }

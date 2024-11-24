@@ -3,44 +3,80 @@ package network
 import (
 	"fmt"
 	"net"
-
+	"sync"
 	"github.com/mathiascn/multiplayer_server/pkg/protocol"
-	"github.com/mathiascn/multiplayer_server/pkg/version"
 	"github.com/mathiascn/multiplayer_server/pkg/protocol/messages"
+	"github.com/mathiascn/multiplayer_server/pkg/version"
 )
 
-func HandleHandshake(message []byte) {
+var (
+	serial uint8
+	serialMutex sync.Mutex
+)
+
+
+func getNextSerial() uint8 {
+	serialMutex.Lock()
+	defer serialMutex.Unlock()
+
+	serial = (serial + 1) % 255
+	return serial
+}
+
+
+func HandleHandshake(packet protocol.Packet, conn *net.UDPConn, addr *net.UDPAddr) error {
+	response := "Client incompatible"
+	errorFlag := 0
+
 	//deserialize incoming handshake
-	handshake, err := messages.DeserializeHandshakePayload([]byte(message))
+	handshake, err := messages.DeserializeHandshakePayload(packet.Payload)
 	if err != nil {
 		fmt.Println("Error deserializing handshake", err)
 	}
-
 	fmt.Printf("Client handshake: Version %d.%d.%d\n", handshake.Major, handshake.Minor, handshake.Patch)
-	//conditional response
-	if !version.IsClientCompatible(handshake.Major, handshake.Minor, handshake.Patch) {
-		response = ""
+
+	// return error if client incompatible
+	if version.IsClientCompatible(handshake.Major, handshake.Minor, handshake.Patch) {
+		response = "Client compatible"
+		errorFlag = 1
 	}
 
-	newPacket := protocol.EncodePacket(protocol.MessageTypeHandshake, response)
+
+	// encode response
+	serial = getNextSerial()
+	p := protocol.Packet{
+		MessageType: protocol.MessageTypeHandshake,
+		Payload: []byte(response),
+		ErrorFlag: byte(errorFlag),
+		Serial: byte(serial),
+	}
+	newPacket, err := protocol.EncodePacket(p)
+
+	if err != nil {
+		return fmt.Errorf("failed to encode response %s", err)
+	}
+
 	_, err = conn.WriteToUDP(newPacket, addr)
 	if err != nil {
 		fmt.Println("Error sending response to client:", err)
 	}
+
+	return nil
 }
 
-func HandlePacket(conn *net.UDPConn,addr *net.UDPAddr, packet []byte) {
-	messageType, message, err := protocol.DecodePacket(packet) // Use message type
+
+func HandlePacket(conn *net.UDPConn, addr *net.UDPAddr, data []byte) {
+	packet, err := protocol.DecodePacket(data)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fmt.Printf("Received from %v: %s\n", addr, message)
+	fmt.Printf("Received from %v: %s\n", addr, string(packet.Payload))
 
-	switch messageType {
+	switch packet.MessageType {
 	case protocol.MessageTypeHandshake:
-		HandleHandshake()
+		HandleHandshake(packet, conn, addr)
 	default:
-		fmt.Println("Unknown message type %d\n", messageType)
+		fmt.Printf("Unknown message type %d\n", packet.MessageType)
 	}
 }
