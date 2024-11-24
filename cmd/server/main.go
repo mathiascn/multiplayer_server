@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+
 	"github.com/mathiascn/multiplayer_server/pkg/network"
 )
 
@@ -16,9 +17,9 @@ func main() {
 
 	parsedIP := net.ParseIP(*ip)
 	if parsedIP == nil {
-        fmt.Println("Error: Invalid IP address format")
-        return
-    }
+		fmt.Println("Error: Invalid IP address format")
+		return
+	}
 
 	addr := net.UDPAddr{
 		Port: *port,
@@ -32,5 +33,3 @@ func main() {
 	fmt.Printf("Server listening on %s\n", addr.String())
 	server.Run()
 }
-
-

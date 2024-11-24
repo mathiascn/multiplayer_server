@@ -8,19 +8,19 @@
 package protocol
 
 import (
-	"fmt"
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"time"
 )
 
 const (
 	messageTypeSize = 1
 	payloadSizeSize = 4
-	serialSize = 1
-	errorFlagSize = 1
-	timestampSize = 8
-	headerSize = messageTypeSize + payloadSizeSize + serialSize + errorFlagSize + timestampSize
+	serialSize      = 1
+	errorFlagSize   = 1
+	timestampSize   = 8
+	headerSize      = messageTypeSize + payloadSizeSize + serialSize + errorFlagSize + timestampSize
 )
 
 var (
@@ -29,10 +29,10 @@ var (
 
 type Packet struct {
 	MessageType MessageType
-	ErrorFlag byte
-	Serial uint8
-	Timestamp int64
-	Payload []byte
+	ErrorFlag   byte
+	Serial      uint8
+	Timestamp   int64
+	Payload     []byte
 }
 
 func EncodePacket(packet Packet) ([]byte, error) {
@@ -40,7 +40,6 @@ func EncodePacket(packet Packet) ([]byte, error) {
 
 	// write message type (1 byte)
 	buffer.Write([]byte{byte(packet.MessageType)})
-
 
 	// write payload size (4 bytes)
 	payloadSize := uint32(len(packet.Payload))
@@ -67,7 +66,6 @@ func EncodePacket(packet Packet) ([]byte, error) {
 
 	return buffer.Bytes(), nil
 }
-
 
 func DecodePacket(data []byte) (Packet, error) {
 	dataLength := len(data)
@@ -97,7 +95,6 @@ func DecodePacket(data []byte) (Packet, error) {
 	if dataLength < expectedLength {
 		return Packet{}, fmt.Errorf("invalid payload length: expected %d, got %d", expectedLength, dataLength)
 	}
-
 
 	// read error flag (1 byte)
 	errorFlag, err := buffer.ReadByte()

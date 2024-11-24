@@ -10,7 +10,6 @@ type UDPServer struct {
 	handler func(*net.UDPConn, *net.UDPAddr, []byte)
 }
 
-
 func NewUDPServer(addr *net.UDPAddr, handler func(*net.UDPConn, *net.UDPAddr, []byte)) (*UDPServer, error) {
 	conn, err := net.ListenUDP("udp", addr)
 	if err != nil {
@@ -18,7 +17,6 @@ func NewUDPServer(addr *net.UDPAddr, handler func(*net.UDPConn, *net.UDPAddr, []
 	}
 	return &UDPServer{conn: conn, handler: handler}, nil
 }
-
 
 func (s *UDPServer) Run() {
 	buffer := make([]byte, 1024)
@@ -31,7 +29,6 @@ func (s *UDPServer) Run() {
 		go s.handler(s.conn, clientAddr, buffer[:n])
 	}
 }
-
 
 func (s *UDPServer) Close() {
 	s.conn.Close()

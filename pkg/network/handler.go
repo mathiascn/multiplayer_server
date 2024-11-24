@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"net"
 	"sync"
+
 	"github.com/mathiascn/multiplayer_server/pkg/protocol"
 	"github.com/mathiascn/multiplayer_server/pkg/protocol/messages"
 	"github.com/mathiascn/multiplayer_server/pkg/version"
 )
 
 var (
-	serial uint8
+	serial      uint8
 	serialMutex sync.Mutex
 )
-
 
 func getNextSerial() uint8 {
 	serialMutex.Lock()
@@ -22,7 +22,6 @@ func getNextSerial() uint8 {
 	serial = (serial + 1) % 255
 	return serial
 }
-
 
 func HandleHandshake(packet protocol.Packet, conn *net.UDPConn, addr *net.UDPAddr) error {
 	response := "Client incompatible"
@@ -41,14 +40,13 @@ func HandleHandshake(packet protocol.Packet, conn *net.UDPConn, addr *net.UDPAdd
 		errorFlag = 1
 	}
 
-
 	// encode response
 	serial = getNextSerial()
 	p := protocol.Packet{
 		MessageType: protocol.MessageTypeHandshake,
-		Payload: []byte(response),
-		ErrorFlag: byte(errorFlag),
-		Serial: byte(serial),
+		Payload:     []byte(response),
+		ErrorFlag:   byte(errorFlag),
+		Serial:      byte(serial),
 	}
 	newPacket, err := protocol.EncodePacket(p)
 
@@ -63,7 +61,6 @@ func HandleHandshake(packet protocol.Packet, conn *net.UDPConn, addr *net.UDPAdd
 
 	return nil
 }
-
 
 func HandlePacket(conn *net.UDPConn, addr *net.UDPAddr, data []byte) {
 	packet, err := protocol.DecodePacket(data)
