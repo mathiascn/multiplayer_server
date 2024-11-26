@@ -24,7 +24,7 @@ const (
 )
 
 var (
-	order = binary.BigEndian
+	order = binary.LittleEndian
 )
 
 type Packet struct {
@@ -62,14 +62,14 @@ func EncodePacket(packet Packet) ([]byte, error) {
 	}
 
 	// write payload (variable bytes)
-	buffer.Write([]byte(packet.Payload))
+	buffer.Write(packet.Payload)
 
 	return buffer.Bytes(), nil
 }
 
 func DecodePacket(data []byte) (Packet, error) {
 	dataLength := len(data)
-	fmt.Println("decoding a packet of size:", dataLength)
+	fmt.Println("\tpacket size:", dataLength)
 
 	// return error if length is less than header size
 	if dataLength < headerSize {
@@ -119,6 +119,12 @@ func DecodePacket(data []byte) (Packet, error) {
 	if _, err := buffer.Read(payload); err != nil {
 		return Packet{}, err
 	}
+
+	// fmt.Printf("MessageType: %d\n", messageType)
+	// fmt.Printf("ErrorFlag: %d\n", errorFlag)
+	// fmt.Printf("Serial: %d\n", serial)
+	// fmt.Printf("Timestamp: %d\n", timestamp)
+	// fmt.Printf("Payload: %s\n", string(payload))
 
 	return Packet{
 		MessageType: MessageType(messageType),

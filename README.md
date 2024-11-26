@@ -24,7 +24,7 @@ The server uses a custom binary protocol for communication. Each packet is struc
 
 2. **Payload Size (4 Bytes)**:
    - Indicates the size of the payload in bytes (excluding the header).
-   - Encoded as an unsigned 32-bit integer (`uint32`) in **big-endian** format.
+   - Encoded as an unsigned 32-bit integer (`uint32`) in **little-endian** format.
 
 3. **Serial (1 Byte)**:
    - A unique identifier for the packet to enable ordering and detection of missing packets.
@@ -39,7 +39,7 @@ The server uses a custom binary protocol for communication. Each packet is struc
 
 5. **Timestamp (8 Bytes)**:
    - A UNIX timestamp (in milliseconds) indicating when the packet was created.
-   - Encoded as a signed 64-bit integer (`int64`) in **big-endian** format.
+   - Encoded as a signed 64-bit integer (`int64`) in **little-endian** format.
 
 #### **Payload**
 - The payload contains the actual message data (e.g., player actions, chat messages).
