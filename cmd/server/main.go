@@ -5,14 +5,17 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"github.com/mathiascn/multiplayer_server/pkg/network"
+	"github.com/mathiascn/multiplayer_server/pkg/constants"
 )
 
 func main() {
 	// Flag reads ip and port from CLI
-	ip := flag.String("ip", "0.0.0.0", "IP address to bind to")
-	port := flag.Int("port", 8080, "Port to listen on")
+	ip := flag.String("ip", constants.Ip, "IP address to bind to")
+	port := flag.Int("port", constants.Port, "Port to listen on")
+	tickrate := flag.Int("tickrate", constants.Tickrate, "Tickrate of the server")
 	flag.Parse()
 
 	parsedIP := net.ParseIP(*ip)
@@ -26,7 +29,9 @@ func main() {
 		IP:   net.ParseIP(*ip),
 	}
 
-	server, err := network.NewUDPServer(&addr, network.HandlePacket)
+	// start server with default tickrate of 1 billion nanoseconds / tickrate
+	// (default 64 tickrate: 15.625 ms per tick)
+	server, err := network.NewUDPServer(&addr, network.HandlePacket, time.Duration(1_000_000_000 / *tickrate))
 	if err != nil {
 		log.Fatalf("Error starting server: %v", err)
 	}
